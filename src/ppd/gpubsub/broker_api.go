@@ -23,13 +23,16 @@ func (b *Broker) Start(url string, bufferSize int) error {
 	
 	go b.dispatcher()
 	
+	var openconns chan int;
+	openconns = make(chan int, 20);
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			fmt.Print(err)
 			continue
 		}
-		go b.handleConnection(conn)
+		openconns <- 0
+		go b.handleConnection(conn, openconns)
 	}
 }
 
@@ -68,7 +71,7 @@ func (b *Broker) dispatcher() {
 		bytes := mbytes.Bytes()*/
 		subs := b.topics[m.Topic]
 		for _, conn := range subs {
-			//go func() {
+			go func() {
 				//_, err := conn.Write(bytes)
 				enc := gob.NewEncoder(conn)
 				err := enc.Encode(m)
@@ -76,7 +79,7 @@ func (b *Broker) dispatcher() {
 					fmt.Printf("Subscriber %s removed because of: %s.\n", conn.RemoteAddr(), err);
 					delete(subs, conn.RemoteAddr())	
 				}
-			//}()
+			}()
 		}
 	}
 }
@@ -100,7 +103,7 @@ func (b *Broker) publish(dec *gob.Decoder, conn net.Conn) {
 	}
 }
 
-func (b *Broker) handleConnection(c net.Conn) {
+func (b *Broker) handleConnection(c net.Conn, openconns chan int) {
 	dec := gob.NewDecoder(c)
 	m := Message{}
 	dec.Decode(&m)
@@ -115,4 +118,5 @@ func (b *Broker) handleConnection(c net.Conn) {
 			b.publish(dec, c)
 			break;
 	}
+	<-openconns
 }
