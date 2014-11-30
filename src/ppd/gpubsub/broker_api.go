@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net"
 	"io"
+	"bytes"
 )
 
 type Broker struct {
 	topics map[string](map[net.Addr]net.Conn)
-	messageBuffer chan Message
+	messageBuffer map[string]chan Message
+	bufferSize int
 }
 
 func (b *Broker) Start(url string, bufferSize int) error {
@@ -19,12 +21,10 @@ func (b *Broker) Start(url string, bufferSize int) error {
 	}
 	
 	b.topics = make(map[string](map[net.Addr]net.Conn))
-	b.messageBuffer = make(chan Message, bufferSize)
+	b.messageBuffer = make(map[string]chan Message)
+	b.bufferSize = bufferSize
 	
-	go b.dispatcher()
-	
-	var openconns chan int;
-	openconns = make(chan int, 20);
+	openconns := make(chan int, 20);
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -52,6 +52,8 @@ func (b *Broker) checkTopicExists(topic string) {
 	_, ok := b.topics[topic]
 	if !ok {
 		b.topics[topic] = make(map[net.Addr]net.Conn)
+		b.messageBuffer[topic] = make(chan Message, b.bufferSize)
+		go b.dispatcher(topic)
 	}
 }
 
@@ -60,26 +62,30 @@ func (b *Broker) addSubscriber(topic string, c net.Conn) {
 	subscribers[c.RemoteAddr()] = c;
 }
 
-func (b *Broker) dispatcher() {
-	for {
-		m := <-b.messageBuffer
+func (b *Broker) dispatcher(topic string) {
 
-		/*var mbytes bytes.Buffer
+	subs := b.topics[topic]
+	messages := b.messageBuffer[topic]
+	for {
+		m := <-messages
+
+		if len(subs) == 0 {
+			continue
+		}
+		
+		var mbytes bytes.Buffer
 		enc := gob.NewEncoder(&mbytes);
 		enc.Encode(m)
 		
-		bytes := mbytes.Bytes()*/
-		subs := b.topics[m.Topic]
+		bytes := mbytes.Bytes()
 		for _, conn := range subs {
-			go func() {
-				//_, err := conn.Write(bytes)
-				enc := gob.NewEncoder(conn)
-				err := enc.Encode(m)
-				if err != nil {
-					fmt.Printf("Subscriber %s removed because of: %s.\n", conn.RemoteAddr(), err);
-					delete(subs, conn.RemoteAddr())	
-				}
-			}()
+			_, err := conn.Write(bytes)
+			//enc := gob.NewEncoder(conn)
+			//err := enc.Encode(m)
+			if err != nil {
+				fmt.Printf("Subscriber %s removed because of: %s.\n", conn.RemoteAddr(), err);
+				delete(subs, conn.RemoteAddr())	
+			}
 		}
 	}
 }
@@ -95,7 +101,7 @@ func (b *Broker) publish(dec *gob.Decoder, conn net.Conn) {
 		}
 
 		if err == nil {
-			b.messageBuffer <- m
+			b.messageBuffer[m.Topic] <- m
 		} else {
 			fmt.Printf("Error on publish: %s\n", err);
 		}
