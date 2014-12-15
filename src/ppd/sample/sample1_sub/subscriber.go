@@ -40,9 +40,11 @@ func main() {
 		return
 	}
 	
+	last_check := messages;
 	for {
-		mymess := messages;
+		prior := last_check;
 		time.Sleep(time.Second);
-		fmt.Printf("%d messages per second. %d messages received.\n", messages-mymess, messages);
+		last_check = messages;
+		fmt.Printf("%d messages per second. %d messages received.\n", last_check-prior, last_check);
 	}	
 }

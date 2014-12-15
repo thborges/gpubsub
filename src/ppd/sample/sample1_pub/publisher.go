@@ -45,12 +45,13 @@ func main() {
 		}
 	}()
 	
+	last_check := sent;
 	for {
-		mymess := sent;
+		prior := last_check;
 		time.Sleep(time.Second);
-		fmt.Printf("%d messages per second. %d messages sent.\n", sent-mymess, sent);
-	}
-	
+		last_check = sent;
+		fmt.Printf("%d messages per second. %d messages sent.\n", last_check-prior, last_check);
+	}		
 	p.Disconnect();
 		
 }
