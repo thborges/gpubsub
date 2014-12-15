@@ -28,8 +28,18 @@ func main() {
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	
+	sent := 0;
+	
+	go func() {
+		for {
+			mymess := sent;
+			time.Sleep(time.Second);
+			fmt.Printf("%d messages per second. %d messages received.\n", sent-mymess, sent);
+		}
+	}()
+		
 	quote := common.Quote{}
-	for i := 0; i < 10000; i++ {
+	for {
 		
 		quote.SetQuote(r.Float64())
 		//fmt.Printf("Publishing quote %f %f\n", quote.GetQuote())
@@ -39,6 +49,7 @@ func main() {
 			fmt.Printf("Erro ao publicar: %s\n", err)
 			return
 		}
+		sent++;
 	}
 	
 	p.Disconnect();
