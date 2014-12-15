@@ -3,6 +3,7 @@ package gpubsub
 import (
 	"net"
 	"encoding/gob"
+	"encoding/json"
 	"bytes"
 	"io"
 	"log"
@@ -43,14 +44,14 @@ func (p *Subscriber) Subscribe(topic string, sc SubscriberCallback, obj interfac
 	go func() {
 		dec := gob.NewDecoder(p.conn)
 		n := Message{}
+		
 		for ; !p.stop;  {
 			//TODO: Put reader timetout to cancel more cleanly
 			err := dec.Decode(&n)
 			if err == io.EOF {
 				break;
 			} else if err != nil {
-				enc := gob.NewDecoder(bytes.NewBuffer(n.Data));
-				err = enc.Decode(obj)
+				err = json.Unmarshal(n.Data, obj)
 				if err != nil {
 					log.Fatal("decode error: ", err)
 					break;
@@ -93,12 +94,14 @@ func (p *Publisher) Connect(url string) error {
 }
 
 func (p *Publisher) Publish(topic string, event interface{}) error {
-	var mbytes bytes.Buffer
-	enc := gob.NewEncoder(&mbytes);
-	enc.Encode(event)
+	
+	ebytes, err := json.Marshal(event);
+	if err != nil {
+		return err
+	}
 
-	m := Message{Pub, topic, mbytes.Bytes()}
-	err := p.enc.Encode(m)
+	m := Message{Pub, topic, ebytes}
+	err = p.enc.Encode(m)
 	return err
 }
 
