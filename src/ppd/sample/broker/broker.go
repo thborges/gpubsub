@@ -3,12 +3,19 @@ package main
 import (
 	"fmt"
 	"ppd/gpubsub"
-	//"time"
+	"os"
+	"strconv"
 )
 
 func main() {
+	
+	if len(os.Args) < 2 {
+		fmt.Printf("Informe a porta e o tamanho do buffer em cada topico.\n");
+		return;
+	}
+		
 	b := gpubsub.Broker{}
-	port := ":8999"
+	port := os.Args[1]
 	fmt.Printf("Server listening on %s\n", port);
 	
 	/*go func(b *gpubsub.Broker) {
@@ -18,6 +25,7 @@ func main() {
 		}	
 	}(&b)*/
 	
-	b.Start(port, 10, 20)
+	k, _ := strconv.Atoi(os.Args[2])
+	b.Start(port, k, 20)
 
 }
