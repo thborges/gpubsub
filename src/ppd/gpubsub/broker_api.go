@@ -101,7 +101,10 @@ func (b *Broker) publish(dec *gob.Decoder, conn net.Conn) {
 		}
 
 		if err == nil {
-			b.messageBuffer[m.Topic] <- m
+			mb, ok := b.messageBuffer[m.Topic]
+			if ok {
+				mb <- m
+			}
 		} else {
 			fmt.Printf("Error on publish: %s\n", err);
 		}

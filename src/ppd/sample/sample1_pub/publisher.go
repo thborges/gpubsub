@@ -48,7 +48,7 @@ func main() {
 	for {
 		mymess := sent;
 		time.Sleep(time.Second);
-		fmt.Printf("%d messages per second. %d messages received.\n", sent-mymess, sent);
+		fmt.Printf("%d messages per second. %d messages sent.\n", sent-mymess, sent);
 	}
 	
 	p.Disconnect();
