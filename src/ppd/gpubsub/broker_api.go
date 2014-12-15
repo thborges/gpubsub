@@ -14,7 +14,7 @@ type Broker struct {
 	bufferSize int
 }
 
-func (b *Broker) Start(url string, bufferSize int) error {
+func (b *Broker) Start(url string, bufferSize int, simultConns int) error {
 	ln, err := net.Listen("tcp", url)
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (b *Broker) Start(url string, bufferSize int) error {
 	b.messageBuffer = make(map[string]chan Message)
 	b.bufferSize = bufferSize
 	
-	openconns := make(chan int, 20);
+	openconns := make(chan int, simultConns);
 	for {
 		conn, err := ln.Accept()
 		if err != nil {

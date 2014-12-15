@@ -5,35 +5,36 @@ import (
 	"fmt"
 	"time"
 	"os"
+	"ppd/sample/common"
+	"encoding/gob"
 )
 
 var messages int;
 
-func process_messages(message []byte, err error) {
-	if err != nil {
-		//fmt.Printf("Erro ao decodificar: %s\n", err);
-	} else {
-		//fmt.Printf("Received message from publisher\n");
-		messages++;
-	}
+func EventReceived(event interface{}) {
+	messages++;
+	//quote := event.(*common.Quote)
+	//fmt.Printf("Quote received %f\n", quote.GetQuote());
 }
 
 func main() {
+	gob.Register(common.Quote{})
 
-	if len(os.Args) < 1 {
-		fmt.Printf("Informe o topico.\n");
+	if len(os.Args) < 2 {
+		fmt.Printf("Informe o servidor e o topico.\n");
 		return;
 	}
 		
-	messages = 0;
 	p := gpubsub.Subscriber{}
-	err := p.Connect("localhost:8999")
+	err := p.Connect(os.Args[1])
 	if err != nil {
 		fmt.Printf("Erro ao conectar: %s\n", err);
 		return
 	}
 	
-	err = p.Subscribe(os.Args[1], process_messages)
+	messages = 0;
+	quote := common.Quote{}
+	err = p.Subscribe(os.Args[2], EventReceived, &quote)
 	if err != nil {
 		fmt.Printf("Erro ao se increver: %s\n", err);
 		return

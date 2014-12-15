@@ -18,6 +18,6 @@ func main() {
 		}	
 	}(&b)*/
 	
-	b.Start(port, 10)
+	b.Start(port, 10, 20)
 
 }

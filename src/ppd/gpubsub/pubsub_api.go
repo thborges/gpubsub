@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"bytes"
 	"io"
+	"log"
 )
 
 type Publisher struct {
@@ -18,7 +19,7 @@ type Subscriber struct {
 	stop bool
 }
 
-type SubscriberCallback func(b []byte, err error)
+type SubscriberCallback func(event interface{})
 
 func (p *Subscriber) Connect(url string) error {
 	conn, err := net.Dial("tcp", url)
@@ -30,7 +31,7 @@ func (p *Subscriber) Connect(url string) error {
 	return nil
 }
 
-func (p *Subscriber) Subscribe(topic string, sc SubscriberCallback) error {
+func (p *Subscriber) Subscribe(topic string, sc SubscriberCallback, obj interface{}) error {
 
 	var buff bytes.Buffer 
 	enc := gob.NewEncoder(&buff)
@@ -46,17 +47,27 @@ func (p *Subscriber) Subscribe(topic string, sc SubscriberCallback) error {
 			//TODO: Put reader timetout to cancel more cleanly
 			err := dec.Decode(&n)
 			if err == io.EOF {
-				p.conn.Close();
 				break;
+			} else if err != nil {
+				enc := gob.NewDecoder(bytes.NewBuffer(n.Data));
+				err = enc.Decode(obj)
+				if err != nil {
+					log.Fatal("decode error: ", err)
+					break;
+				}
+
+				sc(obj)
 			}
-			sc(n.Data, err)
 		}
+		
+		p.conn.Close();
 	}()
 	
 	return err
 }
 
 func (p *Subscriber) Unsubscribe(topic string) {
+	p.conn.Close();
 	p.stop = true
 }
 
@@ -81,8 +92,12 @@ func (p *Publisher) Connect(url string) error {
 	return err
 }
 
-func (p *Publisher) Publish(topic string, data []byte) error {
-	m := Message{Pub, topic, data}
+func (p *Publisher) Publish(topic string, event interface{}) error {
+	var mbytes bytes.Buffer
+	enc := gob.NewEncoder(&mbytes);
+	enc.Encode(event)
+
+	m := Message{Pub, topic, mbytes.Bytes()}
 	err := p.enc.Encode(m)
 	return err
 }
