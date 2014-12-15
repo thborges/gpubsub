@@ -30,26 +30,25 @@ func main() {
 	
 	sent := 0;
 	
-	go func() {
+	go func() {	
+		quote := common.Quote{}
 		for {
-			mymess := sent;
-			time.Sleep(time.Second);
-			fmt.Printf("%d messages per second. %d messages received.\n", sent-mymess, sent);
+			quote.SetQuote(r.Float64())
+			//fmt.Printf("Publishing quote %f %f\n", quote.GetQuote())
+		
+			err = p.Publish(os.Args[2], quote)
+			if err != nil {
+				fmt.Printf("Erro ao publicar: %s\n", err)
+				return
+			}
+			sent++;
 		}
 	}()
-		
-	quote := common.Quote{}
+	
 	for {
-		
-		quote.SetQuote(r.Float64())
-		//fmt.Printf("Publishing quote %f %f\n", quote.GetQuote())
-		
-		err = p.Publish(os.Args[2], quote)
-		if err != nil {
-			fmt.Printf("Erro ao publicar: %s\n", err)
-			return
-		}
-		sent++;
+		mymess := sent;
+		time.Sleep(time.Second);
+		fmt.Printf("%d messages per second. %d messages received.\n", sent-mymess, sent);
 	}
 	
 	p.Disconnect();

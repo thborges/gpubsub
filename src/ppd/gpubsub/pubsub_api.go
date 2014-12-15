@@ -10,6 +10,7 @@ import (
 
 type Publisher struct {
 	conn net.Conn
+	enc *gob.Encoder
 	stop bool
 }
 
@@ -84,29 +85,20 @@ func (p *Publisher) Connect(url string) error {
 	}
 	p.conn = conn
 	p.stop = false
+	p.enc = gob.NewEncoder(p.conn)
 
 	m := Message{Pub, "", nil}
-	var mbytes bytes.Buffer
-	encm := gob.NewEncoder(&mbytes);
-	encm.Encode(m)
-	_, err = p.conn.Write(mbytes.Bytes())
+	err = p.enc.Encode(m)
 	return err
 }
 
 func (p *Publisher) Publish(topic string, event interface{}) error {
-	var ebytes bytes.Buffer
-	ence := gob.NewEncoder(&ebytes);
-	err := ence.Encode(event)
-	if err != nil {
-		return err
-	}
-
-	m := Message{Pub, topic, ebytes.Bytes()}
 	var mbytes bytes.Buffer
-	encm := gob.NewEncoder(&mbytes);
-	encm.Encode(m)
-	
-	_, err = p.conn.Write(mbytes.Bytes())
+	enc := gob.NewEncoder(&mbytes);
+	enc.Encode(event)
+
+	m := Message{Pub, topic, mbytes.Bytes()}
+	err := p.enc.Encode(m)
 	return err
 }
 
