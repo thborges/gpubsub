@@ -7,12 +7,10 @@ import (
 	"ppd/sample/common"
 	"math/rand"
 	"time"
-	"encoding/gob"
+	"encoding/json"
 )
 
 func main() {
-	gob.Register(common.Quote{})
-	
 	if len(os.Args) < 2 {
 		fmt.Printf("Informe o servidor e o tópico.\n")
 		return;
@@ -30,10 +28,21 @@ func main() {
 	
 	sent := 0;
 	
-	go func() {	
+	go func() {
 		quote := common.Quote{}
+		quote.SetQuote(r.Float64())
+		for i := 0; i < len(quote.Others); i++ {
+			quote.Others[i] = r.Float64();
+		}
+
+		ebytes, _ := json.Marshal(quote);
+		fmt.Printf("Event size: %d bytes\n", len(ebytes));
+			
 		for {
 			quote.SetQuote(r.Float64())
+			for i := 0; i < len(quote.Others); i++ {
+				quote.Others[i] = r.Float64();
+			}
 			//fmt.Printf("Publishing quote %f %f\n", quote.GetQuote())
 		
 			err = p.Publish(os.Args[2], quote)
