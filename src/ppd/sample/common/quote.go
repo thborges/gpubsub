@@ -2,7 +2,7 @@ package common
 
 type Quote struct {
 	Value float64
-	Others [10]float64
+	Others [100]float64
 }
 
 func (q *Quote) GetQuote() float64 {
