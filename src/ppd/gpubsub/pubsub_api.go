@@ -1,17 +1,17 @@
 package gpubsub
 
 import (
-	"net"
+	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"bytes"
 	"io"
 	"log"
+	"net"
 )
 
 type Publisher struct {
 	conn net.Conn
-	enc *gob.Encoder
+	enc  *gob.Encoder
 	stop bool
 }
 
@@ -34,48 +34,47 @@ func (p *Subscriber) Connect(url string) error {
 
 func (p *Subscriber) Subscribe(topic string, sc SubscriberCallback, obj interface{}) error {
 
-	var buff bytes.Buffer 
+	var buff bytes.Buffer
 	enc := gob.NewEncoder(&buff)
 
 	m := Message{Sub, topic, nil}
 	err := enc.Encode(m)
 	p.conn.Write(buff.Bytes())
-	
+
 	go func() {
 		dec := gob.NewDecoder(p.conn)
 		n := Message{}
-		
-		for ; !p.stop;  {
+
+		for !p.stop {
 			//TODO: Put reader timetout to cancel more cleanly
 			err := dec.Decode(&n)
 			if err == io.EOF {
-				break;
+				break
 			} else if err != nil {
 				err = json.Unmarshal(n.Data, obj)
 				if err != nil {
 					log.Fatal("decode error: ", err)
-					break;
+					break
 				}
 
 				sc(obj)
 			}
 		}
-		
-		p.conn.Close();
+
+		p.conn.Close()
 	}()
-	
+
 	return err
 }
 
 func (p *Subscriber) Unsubscribe(topic string) {
-	p.conn.Close();
+	p.conn.Close()
 	p.stop = true
 }
 
 func (p *Subscriber) Disconnect() {
 	p.conn.Close()
 }
-
 
 /* ----------------------------------- */
 
@@ -94,8 +93,8 @@ func (p *Publisher) Connect(url string) error {
 }
 
 func (p *Publisher) Publish(topic string, event interface{}) error {
-	
-	ebytes, err := json.Marshal(event);
+
+	ebytes, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
