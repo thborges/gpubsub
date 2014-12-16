@@ -17,6 +17,7 @@ type Broker struct {
 type Listener struct {
 	conn    net.Conn
 	channel chan []byte
+	gone	chan bool
 }
 
 func (b *Broker) Start(url string, bufferSize int, simultConns int) error {
@@ -71,13 +72,9 @@ func (b *Broker) writeToSub(topic string, lst Listener) {
 		//enc := gob.NewEncoder(conn)
 		//err := enc.Encode(m)
 		if err != nil {
-			addr := lst.conn.RemoteAddr()
-			fmt.Printf("Subscriber %s removed because of: %s.\n", addr, err)
-			
-			//TODO: protected over race cond.
-			delete(b.topics[topic], addr)
 			lst.conn.Close()
-			
+			fmt.Printf("Subscriber %s will be removed because of: %s.\n", lst.conn.RemoteAddr(), err)
+			lst.gone <- true
 			break
 		}
 	}
@@ -89,6 +86,7 @@ func (b *Broker) addSubscriber(topic string, c net.Conn) {
 	lst := Listener{} 
 	lst.conn = c
 	lst.channel = make(chan []byte, 10)
+	lst.gone = make(chan bool)
 	subscribers[c.RemoteAddr()] = lst
 	go b.writeToSub(topic, lst)
 }
@@ -110,7 +108,14 @@ func (b *Broker) dispatcher(topic string) {
 
 		bytes := mbytes.Bytes()
 		for _, lst := range subs {
-			lst.channel <- bytes[0:]
+			select {
+				case <- lst.gone: {
+					fmt.Printf("Subscriber %s removed.\n", lst.conn.RemoteAddr());
+					delete(subs, lst.conn.RemoteAddr())
+					close(lst.channel)
+				}
+				case lst.channel <- bytes[0:]:
+			}
 		}
 	}
 }
